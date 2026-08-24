@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.env
+.venv
+env/
+venv/
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Editors
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Build
+/dist
+/out
+.env.local
+
+# GenLayer
+.genvm/
+*.genvm-cache

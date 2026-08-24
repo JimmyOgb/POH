@@ -1,0 +1,25 @@
+{
+  "name": "proof-of-humanity-oracle",
+  "version": "1.0.0",
+  "description": "GenLayer Proof of Humanity oracle with band-based consensus and real transaction finalization.",
+  "keywords": [
+    "genlayer", "proof-of-humanity", "sybil-detection",
+    "blockchain", "ai", "consensus", "web3", "identity", "oracle"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JimmyOgb/proof-of-humanity-oracle"
+  },
+  "license": "MIT",
+  "scripts": {
+    "dev": "npx serve frontend/",
+    "start": "npx serve frontend/",
+    "test": "pytest tests/test_poh_oracle.py tests/direct/ -q && node --test tests/frontend/*.test.mjs",
+    "lint:contract": "genvm-lint check contract/poh_oracle.py --json",
+    "build": "node --check frontend/app.js && node --check frontend/wallet.js && node --check frontend/transaction.js && node --check frontend/scanner.js",
+    "check": "npm run lint:contract && npm test",
+    "deploy:contract": "genlayer deploy --contract contract/poh_oracle.py",
+    "test:integration": "gltest tests/integration/ -v -s --network studionet",
+    "deploy:vercel": "vercel --prod"
+  }
+}
