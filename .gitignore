@@ -25,3 +25,6 @@ Thumbs.db
 # GenLayer
 .genvm/
 *.genvm-cache
+
+.vercel
+.env*
