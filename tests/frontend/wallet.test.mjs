@@ -10,7 +10,7 @@ const chain = { id: 61999, name: "Genlayer Studio Network" };
 test("configuration points to the deployed Studionet contract", () => {
   assert.equal(config.network, "studionet");
   assert.equal(config.chainId, 61999);
-  assert.equal(config.contractAddress, "0x4FAE1cdCB3c72ec3B22A5b1649D94fE3c4530247");
+  assert.equal(config.contractAddress, "0x2c58E357ae3e76d4e90fbdADd416F938A0798593");
   assert.equal(config.contractSchemaVersion, "2");
   assert.equal(config.scanMaxBlocks, 50);
   assert.equal(config.scanExtendedMaxBlocks, 500);
@@ -33,6 +33,8 @@ test("deployed contract API and evaluate_wallet argument order are explicit", ()
     get_humanity_status: { args: ["string"], readonly: true, returns: "string" },
     get_score: { args: ["string"], readonly: true, returns: "string" },
     get_status: { args: ["string"], readonly: true, returns: "string" },
+    set_evaluator_authorization: { args: ["string", "bool"], readonly: false, returns: "string" },
+    is_evaluator_authorized: { args: ["string", "string"], readonly: true, returns: "bool" },
   });
   const args = buildEvaluateWalletArgs(new String("0x1111111111111111111111111111111111111111"), new String("{\"wallet\":\"evidence\"}"), true);
   assert.deepEqual(args, ["0x1111111111111111111111111111111111111111", "{\"wallet\":\"evidence\"}", true]);

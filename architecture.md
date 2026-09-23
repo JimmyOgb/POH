@@ -1,30 +1,44 @@
 # Behavioral assessment oracle architecture
 
-The frontend scans a bounded range of real Studionet blocks using the public
-`genlayer-js@1.1.8` read client. It derives a structured evidence object from
-full transaction objects, displays the source/range, and submits that object to
-the contract. The contract owns the authoritative evaluation record and
-registry: it validates/canonicalizes the object, hashes it, runs the LLM leader
-and independent validator, then persists the consensus result.
+The frontend connects to the authenticated user's wallet using the public
+`genlayer-js@1.1.8` client. The contract owns the authoritative evaluation record
+and registry: it verifies caller authorization (self-evaluation via
+`gl.message.sender_address == wallet` or explicit on-chain delegation via
+`is_evaluator_authorized`), queries authoritative Studionet RPC evidence directly
+inside the GenLayer nondeterministic boundary, hashes the canonical evidence with
+provenance and caller binding, runs the LLM leader and independent validator,
+then persists the consensus result.
 
-The assessment is limited to the quality and behavioral signal of submitted
+The assessment is limited to the quality and behavioral signal of authoritative
 evidence. It does not prove identity, uniqueness, wallet ownership, or
 cryptographic humanity.
 
-## Canonical evidence boundary
+## Caller Authorization & Evaluator Delegation
 
-The contract does not pretend to fetch arbitrary wallet history. The frontend
-source is `genlayer_studionet_rpc`, scanning the latest configurable 5,000
-blocks by default. The evidence includes the exact block range, counts, active
-days, unique transaction targets, sampled intervals, daily counts, repetition
-ratio, regularity score, and collection timestamp. The contract rejects prose,
-missing fields, invalid types, wallet/chain mismatches, inconsistent counts,
-and out-of-range values. Unknown JSON fields are discarded before prompting.
+Evaluations are strictly authenticated:
+1. **Self-Evaluation (Default)**: `gl.message.sender_address == evaluated_wallet`.
+   The connected wallet signs and submits the evaluation for its own address.
+2. **Delegated Evaluation**: A third party can only evaluate a wallet if the wallet
+   owner has explicitly registered them beforehand via `set_evaluator_authorization(evaluator, True)`.
+3. **Fail-Closed Gate**: Unauthorized callers are rejected on-chain immediately with
+   `[EXPECTED] caller is not authorized to evaluate this wallet` and cannot create or
+   overwrite another wallet's reputation.
 
-The contract computes SHA-256 over sorted-key, compact canonical JSON and stores
-the resulting `evidence_hash` with a compact summary. This is an evidence
-commitment, not proof that the source was complete, accurate, or controlled by
-the wallet owner.
+## Authoritative Studionet Evidence & Quarantined Context
+
+The contract does NOT trust caller-supplied activity metrics.
+- Authoritative evidence is fetched inside `gl.nondet` via Studionet RPC
+  (`sim_getTransactionsForAddress`).
+- If Studionet RPC cannot be reached or fails, evaluation fails closed.
+- Any caller-supplied JSON or prose is strictly quarantined as `unverified_context`.
+  The evaluation prompt strictly instructs validators that user-supplied context
+  must never override or establish activity facts (tx count, active days, etc.).
+
+The contract computes SHA-256 over sorted-key, compact canonical JSON binding
+the network, chain ID, wallet address, authenticated caller, authorization mode,
+retrieved canonical metrics, and provenance metadata. This is an integrity
+commitment verifying exactly what canonical evidence and authorization context
+was submitted to consensus.
 
 ## Consensus
 

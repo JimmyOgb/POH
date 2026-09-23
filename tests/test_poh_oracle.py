@@ -190,3 +190,45 @@ def test_indexed_history_rejects_block_metadata_and_impossible_counts():
         poh.canonicalize_evidence(VALID_WALLET, __import__("json").dumps(indexed_evidence(scan_start_block=1)))
     with pytest.raises(ValueError, match="below transaction_count"):
         poh.canonicalize_evidence(VALID_WALLET, __import__("json").dumps(indexed_evidence(indexed_records=1)))
+
+
+def test_unverified_context_extraction_quarantines_caller_claims():
+    assert poh.extract_unverified_context("") == ""
+    assert poh.extract_unverified_context("hello world") == "hello world"
+    prose = poh.extract_unverified_context('{"untrusted_prose": "I claim I am human"}')
+    assert prose == "I claim I am human"
+    payload = poh.extract_unverified_context('{"transaction_count": 999999, "active_days": 1000}')
+    assert "999999" in payload
+
+
+def test_derive_verified_metrics_from_studionet_computes_exact_counts():
+    txs = [
+        {"from_address": VALID_WALLET, "to_address": "0x2222222222222222222222222222222222222222", "created_at": "2026-08-23T01:00:00Z"},
+        {"from_address": VALID_WALLET, "to_address": "0x3333333333333333333333333333333333333333", "created_at": "2026-08-23T02:00:00Z"},
+        {"from_address": "0x9999999999999999999999999999999999999999", "to_address": VALID_WALLET, "created_at": "2026-08-23T03:00:00Z"},
+    ]
+    verified = poh.derive_verified_metrics_from_studionet(VALID_WALLET, txs)
+    assert verified["transaction_count"] == 2
+    assert verified["unique_contracts"] == 2
+    assert verified["active_days"] == 1
+    assert verified["wallet"] == VALID_WALLET.lower()
+    assert verified["source"] == "genlayer_studionet_rpc"
+    assert verified["chain_id"] == 61999
+
+
+def test_canonical_evidence_binds_wallet_caller_and_provenance():
+    txs = [{"from_address": VALID_WALLET, "to_address": "0x2222222222222222222222222222222222222222", "created_at": "2026-08-23T01:00:00Z"}]
+    verified = poh.derive_verified_metrics_from_studionet(VALID_WALLET, txs)
+    caller = "0x8888888888888888888888888888888888888888"
+    canonical = poh.build_canonical_evidence(VALID_WALLET, caller, "delegated", verified, "unverified notes")
+    assert canonical["wallet"] == VALID_WALLET.lower()
+    assert canonical["authenticated_caller"] == caller.lower()
+    assert canonical["authorization_mode"] == "delegated"
+    assert canonical["provenance"]["retrieval_status"] == "verified_authoritative_rpc"
+    assert canonical["provenance"]["network"] == "studionet"
+    assert canonical["provenance"]["chain_id"] == 61999
+    assert canonical["unverified_context"] == "unverified notes"
+
+    first_hash = poh.evidence_hash(canonical)
+    canonical2 = poh.build_canonical_evidence(VALID_WALLET, caller, "delegated", verified, "different notes")
+    assert first_hash != poh.evidence_hash(canonical2)

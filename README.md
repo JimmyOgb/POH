@@ -310,7 +310,7 @@ Applications should treat the result as one behavioral signal among their broade
 ```text
 Network:       GenLayer Studionet
 Chain ID:      61999
-Contract:      0x4FAE1cdCB3c72ec3B22A5b1649D94fE3c4530247
+Contract:      0x2c58E357ae3e76d4e90fbdADd416F938A0798593
 Evidence:      schema v2
 ```
 
@@ -324,11 +324,18 @@ Arguments:
 
 ```text
 1. walletAddress
-2. canonicalEvidence
+2. canonicalEvidence (or unverified user context)
 3. attestationPassedDemo
 ```
 
-The frontend normalizes these to primitive types:
+Evaluator delegation methods:
+
+```text
+set_evaluator_authorization(string, bool)
+is_evaluator_authorized(string, string) -> bool
+```
+
+The frontend normalizes write parameters to primitive types:
 
 ```text
 walletAddress         → string
@@ -336,7 +343,11 @@ canonicalEvidence     → string
 attestationPassedDemo → boolean
 ```
 
-This prevents a typed GenLayer address object from being accidentally encoded as address calldata when the contract expects a string.
+### Security & Caller Authentication
+1. **Self-Evaluation (Default)**: The contract checks `gl.message.sender_address == walletAddress`. A caller cannot evaluate or overwrite another wallet without authorization.
+2. **Evaluator Authorization**: A wallet owner can explicitly authorize a third party via `set_evaluator_authorization(evaluator, true)`.
+3. **Authoritative Studionet Evidence**: Inside the `gl.nondet` execution boundary, the contract queries the Studionet RPC endpoint directly (`sim_getTransactionsForAddress`) for verified activity metrics. Caller-provided metrics are treated as `unverified_context` and cannot establish facts.
+4. **Fail-Closed**: If the caller is unauthorized or Studionet RPC data cannot be authoritatively retrieved, the contract reverts and records no reputation.
 
 ---
 
@@ -351,7 +362,22 @@ get_humanity_status(string)
 get_registry()
 get_score(string)
 get_status(string)
+is_evaluator_authorized(string, string)
 ```
+
+`get_humanity_status` returns:
+- `score`
+- `status`
+- `score_band`
+- `reasoning`
+- `evaluator`
+- `evidence_hash`
+- `evidence_schema_version`
+- `attestation_passed_demo`
+- `evaluated_wallet`
+- `authenticated_caller`
+- `authorization_mode` (`self` or `delegated`)
+- `evidence_provenance` (`studionet_authoritative_rpc`)
 
 The frontend can read persisted assessment state independently from the transaction submission flow.
 
@@ -359,7 +385,7 @@ The frontend can read persisted assessment state independently from the transact
 
 # Persisted result
 
-After a successful evaluation, the contract can persist information associated with a wallet including:
+After a successful evaluation, the contract persists information associated with a wallet including:
 
 - score
 - score band
@@ -367,10 +393,12 @@ After a successful evaluation, the contract can persist information associated w
 - risk classification
 - reasoning
 - evaluator information
-- evidence hash
+- evidence hash (SHA-256 committing to chain, wallet, authenticated caller, authorization mode, canonical metrics, and provenance)
 - evidence schema version
+- authenticated caller & authorization mode
+- evidence provenance
 
-The registry provides a view of wallets for which assessments have been recorded.
+The registry provides a view of wallets for which assessments have been recorded. Overwriting another wallet's reputation without explicit on-chain authorization is blocked.
 
 ---
 
@@ -536,7 +564,7 @@ No environment variables are required by the current frontend configuration.
 After deployment, verify the public production bundle contains:
 
 ```text
-0x4FAE1cdCB3c72ec3B22A5b1649D94fE3c4530247
+0x2c58E357ae3e76d4e90fbdADd416F938A0798593
 sim_getTransactionsForAddress
 address_index
 ```
@@ -552,7 +580,7 @@ The current frontend uses static configuration for:
 ```text
 Network:       studionet
 Chain ID:      61999
-Contract:      0x4FAE1cdCB3c72ec3B22A5b1649D94fE3c4530247
+Contract:      0x2c58E357ae3e76d4e90fbdADd416F938A0798593
 Schema:        v2
 Scanner:       sim_getTransactionsForAddress
 Scan mode:     address_index

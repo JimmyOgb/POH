@@ -15,7 +15,7 @@
     "dev": "npx serve frontend/",
     "start": "npx serve frontend/",
     "test": "pytest tests/test_poh_oracle.py tests/direct/ -q && node --test tests/frontend/*.test.mjs",
-    "lint:contract": "genvm-lint check contract/poh_oracle.py --json",
+    "lint:contract": "node -e \"process.env.GENVM_VERSION='v0.6.0-rc5'; const { status } = require('child_process').spawnSync('genvm-lint', ['check', 'contract/poh_oracle.py', '--json'], {stdio: 'inherit', env: process.env, shell: true}); process.exit(status ?? 1);\"",
     "build": "node --check frontend/app.js && node --check frontend/wallet.js && node --check frontend/transaction.js && node --check frontend/scanner.js",
     "check": "npm run lint:contract && npm test",
     "deploy:contract": "genlayer deploy --contract contract/poh_oracle.py",

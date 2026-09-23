@@ -2,7 +2,7 @@
 export default {
   network: "studionet",
   chainId: 61999,
-  contractAddress: "0x4FAE1cdCB3c72ec3B22A5b1649D94fE3c4530247",
+  contractAddress: "0x2c58E357ae3e76d4e90fbdADd416F938A0798593",
   contractSchemaVersion: "2",
   scanMaxBlocks: 50,
   scanExtendedMaxBlocks: 500,

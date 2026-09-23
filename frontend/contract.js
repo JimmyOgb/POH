@@ -1,4 +1,4 @@
-export const CONTRACT_ADDRESS = "0x4FAE1cdCB3c72ec3B22A5b1649D94fE3c4530247";
+export const CONTRACT_ADDRESS = "0x2c58E357ae3e76d4e90fbdADd416F938A0798593";
 
 // Verified against the deployed schema-v2 Studionet contract on 2026-08-23.
 export const CONTRACT_SCHEMA = Object.freeze({
@@ -10,6 +10,8 @@ export const CONTRACT_SCHEMA = Object.freeze({
   get_humanity_status: Object.freeze({ args: ["string"], readonly: true, returns: "string" }),
   get_score: Object.freeze({ args: ["string"], readonly: true, returns: "string" }),
   get_status: Object.freeze({ args: ["string"], readonly: true, returns: "string" }),
+  set_evaluator_authorization: Object.freeze({ args: ["string", "bool"], readonly: false, returns: "string" }),
+  is_evaluator_authorized: Object.freeze({ args: ["string", "string"], readonly: true, returns: "bool" }),
 });
 
 const WALLET = /^0x[0-9a-fA-F]{40}$/;
