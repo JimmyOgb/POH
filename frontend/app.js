@@ -344,7 +344,7 @@ async function submitWrite(method, args, terminalId, stateId) {
 }
 
 async function evaluate() {
-  const wallet = $("ev-wallet").value.trim() || state.walletAddress, payload = state.canonicalEvidence, passed = $("ev-attestation").checked;
+  const wallet = $("ev-wallet").value.trim() || state.walletAddress, payload = state.canonicalEvidence;
   if (!state.walletReady) return handleWalletError(new Error("Connect your wallet to GenLayer Studionet first."));
   if (!validWallet(wallet)) return alert("Connect a valid wallet before scanning.");
   if (!canSubmitEvidence({ walletReady: state.walletReady, evidenceReady: state.evidenceReady, evidenceWallet: state.evidenceWallet, wallet, payload })) return alert("Scan this wallet before running an assessment.");
@@ -353,9 +353,9 @@ async function evaluate() {
     if (!payload || payload.trim() === "") throw new Error("Cannot submit assessment: wallet scan did not produce canonical evidence.");
     validateCanonicalEvidencePayload(payload, wallet);
     await assertContractSchemaVersion(readClient, CONTRACT_ADDRESS, config.contractSchemaVersion);
-    if (["localhost", "127.0.0.1", "::1"].includes(location.hostname)) console.debug("Assessment payload ready", { walletAddress: wallet, evidenceLength: payload.length, evidenceSchemaVersion: JSON.parse(payload).schema_version, attestationPassedDemo: passed });
+    if (["localhost", "127.0.0.1", "::1"].includes(location.hostname)) console.debug("Assessment payload ready", { walletAddress: wallet, evidenceLength: payload.length, evidenceSchemaVersion: JSON.parse(payload).schema_version });
     state.evidenceState = EVIDENCE_STATES.ASSESSING;
-    const evaluateArgs = assertEvaluateWalletArgs(buildEvaluateWalletArgs(wallet, payload, passed));
+    const evaluateArgs = assertEvaluateWalletArgs(buildEvaluateWalletArgs(wallet, payload));
     const result = await submitWrite("evaluate_wallet", evaluateArgs, "ev-terminal", "ev-state");
     await readStatus(wallet, "ev-result", result.hash); state.evidenceState = EVIDENCE_STATES.RESULT; await readRegistry();
   }

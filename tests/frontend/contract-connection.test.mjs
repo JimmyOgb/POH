@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readDeployedContract, assertContractSchemaVersion } from "../../frontend/contract-connection.js";
 
-const address = "0x2c58E357ae3e76d4e90fbdADd416F938A0798593";
+const address = "0x882E6E8A2Dd5061673716dB46f13EDf576a0E8aF";
 const wallet = "0xE4220c4b71877bb94EB173f467ef5c5557017085";
 
 test("contract connection diagnostic uses exact deployed read methods and arguments", async () => {

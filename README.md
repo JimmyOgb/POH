@@ -310,22 +310,21 @@ Applications should treat the result as one behavioral signal among their broade
 ```text
 Network:       GenLayer Studionet
 Chain ID:      61999
-Contract:      0x2c58E357ae3e76d4e90fbdADd416F938A0798593
+Contract:      0x882E6E8A2Dd5061673716dB46f13EDf576a0E8aF
 Evidence:      schema v2
 ```
 
 Primary write method:
 
 ```text
-evaluate_wallet(string, string, bool)
+evaluate_wallet(string, string)
 ```
 
 Arguments:
 
 ```text
-1. walletAddress
-2. canonicalEvidence (or unverified user context)
-3. attestationPassedDemo
+1. walletAddress (20-byte 0x hex address)
+2. canonicalEvidence (or unverified user context string)
 ```
 
 Evaluator delegation methods:
@@ -338,16 +337,33 @@ is_evaluator_authorized(string, string) -> bool
 The frontend normalizes write parameters to primitive types:
 
 ```text
-walletAddress         → string
-canonicalEvidence     → string
-attestationPassedDemo → boolean
+walletAddress     → string
+canonicalEvidence → string
 ```
 
-### Security & Caller Authentication
-1. **Self-Evaluation (Default)**: The contract checks `gl.message.sender_address == walletAddress`. A caller cannot evaluate or overwrite another wallet without authorization.
+### Security, Caller Authentication & Trust Boundary
+1. **Self-Evaluation (Default)**: The contract checks `gl.message.sender_address == walletAddress`. An arbitrary caller cannot evaluate or overwrite another wallet without authorization.
 2. **Evaluator Authorization**: A wallet owner can explicitly authorize a third party via `set_evaluator_authorization(evaluator, true)`.
-3. **Authoritative Studionet Evidence**: Inside the `gl.nondet` execution boundary, the contract queries the Studionet RPC endpoint directly (`sim_getTransactionsForAddress`) for verified activity metrics. Caller-provided metrics are treated as `unverified_context` and cannot establish facts.
-4. **Fail-Closed**: If the caller is unauthorized or Studionet RPC data cannot be authoritatively retrieved, the contract reverts and records no reputation.
+3. **Independent Studionet Retrieval**: Inside the `gl.nondet` execution boundary, the contract queries the Studionet RPC endpoint directly (`sim_getTransactionsForAddress` and `eth_getBlockByNumber`) for authoritative activity metrics and anchors.
+4. **Browser-Scanned Evidence Is Informational Only**: Data scanned and displayed in the frontend browser is informational only. The authoritative evidence used for the reputation decision is the data independently retrieved and verified by the contract's own execution path. Caller-provided metrics are strictly quarantined as `unverified_context` and cannot establish facts.
+5. **No Demo Attestation or Bypass Flags**: All demo attestation gates, bypass flags, and trusted caller shortcuts are completely removed. The only path to a verified result is the full multi-validator consensus flow.
+6. **Fail-Closed Gate**: If the caller is unauthorized, Studionet RPC data cannot be authoritatively retrieved, or validators disagree on ANY persisted decision field, the contract execution reverts and records no reputation.
+
+---
+
+# Consensus-backed output agreement
+
+Validators independently evaluate the canonical evidence and must reach unanimous consensus on **every persisted decision-bearing field**:
+
+- `status` (`"Human"`, `"Unknown"`, `"Sybil_Risk"`)
+- `score` (`0` to `100`)
+- `score_band` (`"80-100"`, `"70-79"`, `"40-69"`, `"0-39"`)
+- `risk` (`"Low"`, `"Medium"`, `"High"`)
+- `reasoning` (Evaluator rationale)
+- `evidence_status` (`"verified"`)
+- `evidence_hash` (Canonical SHA-256 evidence commitment)
+
+Any disagreement on score, status, band, risk, reasoning, evidence status, or evidence hash triggers fail-closed consensus rejection. No leader-only field may silently survive into contract state.
 
 ---
 
@@ -366,20 +382,25 @@ is_evaluator_authorized(string, string)
 ```
 
 `get_humanity_status` returns:
-- `score`
-- `status`
-- `score_band`
-- `reasoning`
-- `evaluator`
-- `evidence_hash`
-- `evidence_schema_version`
-- `attestation_passed_demo`
-- `evaluated_wallet`
-- `authenticated_caller`
-- `authorization_mode` (`self` or `delegated`)
-- `evidence_provenance` (`studionet_authoritative_rpc`)
+- `evaluated` (`bool`)
+- `score` (`int`)
+- `status` (`string`: "Human", "Unknown", "Sybil_Risk")
+- `score_band` (`string`)
+- `risk` (`string`: "Low", "Medium", "High")
+- `reasoning` (`string`)
+- `evidence_status` (`string`: "verified")
+- `evaluator` (`string`)
+- `evidence_hash` (`string`: SHA-256 commitment)
+- `evidence_schema_version` (`string`: "2")
+- `evidence_timestamp` (`string`: verifiable ISO 8601 or epoch timestamp)
+- `latest_tx_hash` (`string`: latest on-chain transaction hash)
+- `snapshot_block` (`int`: latest Studionet block number)
+- `evaluated_wallet` (`string`)
+- `authenticated_caller` (`string`)
+- `authorization_mode` (`string`: "self" or "delegated")
+- `evidence_provenance` (`string`: "studionet_authoritative_rpc")
 
-The frontend can read persisted assessment state independently from the transaction submission flow.
+The frontend reads persisted assessment state independently from the transaction submission flow.
 
 ---
 
@@ -392,8 +413,11 @@ After a successful evaluation, the contract persists information associated with
 - status
 - risk classification
 - reasoning
+- evidence verification status
 - evaluator information
 - evidence hash (SHA-256 committing to chain, wallet, authenticated caller, authorization mode, canonical metrics, and provenance)
+- verifiable evidence timestamp from Studionet
+- strong anchors: latest transaction hash and snapshot block
 - evidence schema version
 - authenticated caller & authorization mode
 - evidence provenance
@@ -564,7 +588,7 @@ No environment variables are required by the current frontend configuration.
 After deployment, verify the public production bundle contains:
 
 ```text
-0x2c58E357ae3e76d4e90fbdADd416F938A0798593
+0x882E6E8A2Dd5061673716dB46f13EDf576a0E8aF
 sim_getTransactionsForAddress
 address_index
 ```
@@ -580,7 +604,7 @@ The current frontend uses static configuration for:
 ```text
 Network:       studionet
 Chain ID:      61999
-Contract:      0x2c58E357ae3e76d4e90fbdADd416F938A0798593
+Contract:      0x882E6E8A2Dd5061673716dB46f13EDf576a0E8aF
 Schema:        v2
 Scanner:       sim_getTransactionsForAddress
 Scan mode:     address_index

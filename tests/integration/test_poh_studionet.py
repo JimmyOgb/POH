@@ -2,35 +2,47 @@ import json
 
 import pytest
 from gltest import get_contract_factory
+from gltest.accounts import get_default_account
 from gltest.assertions import tx_execution_succeeded
 
 
 pytestmark = pytest.mark.slow
 
 
-def canonical_evidence(wallet):
-    return json.dumps({
-        "schema_version": "2", "wallet": wallet, "chain_id": 61999,
-        "source": "genlayer_studionet_rpc", "scan_method": "address_index",
-        "coverage_type": "indexed_history", "indexed_records": 2, "transaction_count": 2,
-        "active_days": 2, "unique_contracts": 2, "activity_intervals_seconds": [100, 200],
-        "daily_activity_counts": [1, 0, 1], "median_interval_seconds": 150,
-        "repetition_ratio_bps": 0, "regularity_score_bps": 5000,
-        "evidence_timestamp": "2026-08-23T00:00:00Z",
-    })
-
-
 def test_deploy_evaluate_and_read_back_on_studionet():
-    """Opt-in real-network path; this invokes actual GenLayer validators/LLM."""
+    """Real-network path invoking actual GenLayer validators/LLM on Studionet."""
+    account = get_default_account()
+    wallet = account.address
+
     factory = get_contract_factory("ProofOfHumanityOracle")
     contract = factory.deploy(args=[])
 
-    wallet = "0x2222222222222222222222222222222222222222"
-    receipt = contract.evaluate_wallet(args=[wallet, canonical_evidence(wallet), True]).transact()
+    print(f"\n[STUDIONET DEPLOYMENT] Deployed ProofOfHumanityOracle at: {contract.address}")
+    receipt = contract.evaluate_wallet(args=[wallet, ""]).transact()
     assert tx_execution_succeeded(receipt), receipt
 
+    # 1-9: Verify all consensus-backed fields persisted on real Studionet
     record = json.loads(contract.get_humanity_status(args=[wallet]).call())
     assert record["evaluated"] is True
-    assert record["wallet"] == wallet
+    assert record["wallet"].lower() == wallet.lower()
     assert record["status"] in {"Human", "Unknown", "Sybil_Risk"}
+    assert record["score_band"] in {"80-100", "70-79", "40-69", "0-39"}
+    assert record["risk"] in {"Low", "Medium", "High"}
+    assert isinstance(record["score"], int)
+    assert len(record["reasoning"]) > 0
+    assert record["evidence_status"] == "verified_authoritative_rpc"
     assert len(record["evidence_hash"]) == 64
+    assert record["authorization_mode"] == "self"
+    assert record["authenticated_caller"].lower() == wallet.lower()
+    assert record["evidence_provenance"]["retrieval_status"] == "verified_authoritative_rpc"
+    assert record["evidence_provenance"]["network"] == "studionet"
+    print(f"[STUDIONET VERIFIED] Status: {record['status']} (Band {record['score_band']}, Score {record['score']})")
+
+    # 10-11: Attempt unauthorized evaluation of another wallet on real Studionet
+    unauthorized_wallet = "0x1111111111111111111111111111111111111111"
+    receipt_unauthorized = contract.evaluate_wallet(args=[unauthorized_wallet, ""]).transact()
+    assert not tx_execution_succeeded(receipt_unauthorized), "Unauthorized evaluation must fail execution"
+    unauthorized_status = json.loads(contract.get_humanity_status(args=[unauthorized_wallet]).call())
+    assert unauthorized_status["evaluated"] is False, "Unauthorized wallet must never receive a verified reputation"
+    print("[STUDIONET VERIFIED] Unauthorized evaluation fail-closed gate confirmed on-chain.")
+

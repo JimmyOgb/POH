@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import config from "../../frontend/config.js";
 import { CONTRACT_ADDRESS, CONTRACT_SCHEMA, assertEvaluateWalletArgs, buildEvaluateWalletArgs } from "../../frontend/contract.js";
-import { CalldataAddress } from "../../frontend/node_modules/genlayer-js/dist/chunk-EY35NPSE.js";
+import { CalldataAddress } from "genlayer-js/types";
 import { connectStudionet, isStudionetChain, walletError, STUDIONET_CHAIN_ID_HEX } from "../../frontend/wallet.js";
 
 const chain = { id: 61999, name: "Genlayer Studio Network" };
@@ -10,7 +10,7 @@ const chain = { id: 61999, name: "Genlayer Studio Network" };
 test("configuration points to the deployed Studionet contract", () => {
   assert.equal(config.network, "studionet");
   assert.equal(config.chainId, 61999);
-  assert.equal(config.contractAddress, "0x2c58E357ae3e76d4e90fbdADd416F938A0798593");
+  assert.equal(config.contractAddress, "0x882E6E8A2Dd5061673716dB46f13EDf576a0E8aF");
   assert.equal(config.contractSchemaVersion, "2");
   assert.equal(config.scanMaxBlocks, 50);
   assert.equal(config.scanExtendedMaxBlocks, 500);
@@ -23,10 +23,10 @@ test("configuration points to the deployed Studionet contract", () => {
 });
 
 test("deployed contract API and evaluate_wallet argument order are explicit", () => {
-  assert.deepEqual(CONTRACT_SCHEMA.evaluate_wallet, { args: ["string", "string", "bool"], readonly: false, returns: "any" });
+  assert.deepEqual(CONTRACT_SCHEMA.evaluate_wallet, { args: ["string", "string"], readonly: false, returns: "string" });
   assert.deepEqual(Object.fromEntries(Object.entries(CONTRACT_SCHEMA).map(([name, method]) => [name, { args: method.args, readonly: method.readonly, returns: method.returns }])), {
-    evaluate_wallet: { args: ["string", "string", "bool"], readonly: false, returns: "any" },
-    revoke_status: { args: ["string"], readonly: false, returns: "any" },
+    evaluate_wallet: { args: ["string", "string"], readonly: false, returns: "string" },
+    revoke_status: { args: ["string"], readonly: false, returns: "string" },
     get_admin: { args: [], readonly: true, returns: "string" },
     get_evidence_schema_version: { args: [], readonly: true, returns: "string" },
     get_registry: { args: [], readonly: true, returns: "string" },
@@ -36,25 +36,24 @@ test("deployed contract API and evaluate_wallet argument order are explicit", ()
     set_evaluator_authorization: { args: ["string", "bool"], readonly: false, returns: "string" },
     is_evaluator_authorized: { args: ["string", "string"], readonly: true, returns: "bool" },
   });
-  const args = buildEvaluateWalletArgs(new String("0x1111111111111111111111111111111111111111"), new String("{\"wallet\":\"evidence\"}"), true);
-  assert.deepEqual(args, ["0x1111111111111111111111111111111111111111", "{\"wallet\":\"evidence\"}", true]);
-  assert.deepEqual(args.map((value) => typeof value), ["string", "string", "boolean"]);
+  const args = buildEvaluateWalletArgs(new String("0x1111111111111111111111111111111111111111"), new String("{\"wallet\":\"evidence\"}"));
+  assert.deepEqual(args, ["0x1111111111111111111111111111111111111111", "{\"wallet\":\"evidence\"}"]);
+  assert.deepEqual(args.map((value) => typeof value), ["string", "string"]);
   assert.strictEqual(assertEvaluateWalletArgs(args), args);
-  assert.throws(() => buildEvaluateWalletArgs("0x1111111111111111111111111111111111111111", "{}", "true"), /boolean/);
-  assert.throws(() => buildEvaluateWalletArgs("0xE4220c4b71877bb94EB173f467ef5c5557017085", "", true), /Canonical evidence is required/);
+  assert.throws(() => buildEvaluateWalletArgs("not-a-wallet", "{}"), /valid wallet/);
+  assert.throws(() => buildEvaluateWalletArgs("0xE4220c4b71877bb94EB173f467ef5c5557017085", ""), /Canonical evidence is required/);
 });
 
 test("evaluate_wallet write boundary rejects GenLayerJS address-typed calldata", () => {
   const addressBytes = Uint8Array.from({ length: 20 }, (_, index) => index + 1);
   const typedAddress = new CalldataAddress(addressBytes);
   assert.throws(
-    () => assertEvaluateWalletArgs([typedAddress, "{}", true]),
+    () => assertEvaluateWalletArgs([typedAddress, "{}"]),
     /walletAddress must be a JavaScript string/,
   );
-  const args = buildEvaluateWalletArgs("0x2222222222222222222222222222222222222222", "{}", false);
+  const args = buildEvaluateWalletArgs("0x2222222222222222222222222222222222222222", "{}");
   assert.equal(typeof args[0], "string");
   assert.equal(typeof args[1], "string");
-  assert.equal(typeof args[2], "boolean");
 });
 
 test("wallet helper detects the Studionet chain", () => {

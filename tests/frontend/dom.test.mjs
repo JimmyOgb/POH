@@ -18,7 +18,7 @@ test("startup-required elements are present", () => {
     "wallet-state-button", "wallet-help", "hero-wallet", "technical-contract", "admin", "registry",
     "scan-button", "scan-extended-button", "scan-state", "scan-result",
     "query-button", "ev-button", "ev-state", "revoke-button", "revoke-state",
-    "ev-payload", "payload-count", "ev-attestation", "ev-wallet", "query-wallet",
+    "ev-payload", "payload-count", "ev-wallet", "query-wallet",
     "revoke-wallet", "ev-terminal", "revoke-terminal", "tx-log", "ev-result",
     "query-result", "result-empty", "assessment-progress", "assessment-transaction", "contract-test-button", "contract-test-state",
   ];

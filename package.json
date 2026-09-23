@@ -11,6 +11,9 @@
     "url": "https://github.com/JimmyOgb/proof-of-humanity-oracle"
   },
   "license": "MIT",
+  "dependencies": {
+    "genlayer-js": "1.1.8"
+  },
   "scripts": {
     "dev": "npx serve frontend/",
     "start": "npx serve frontend/",
